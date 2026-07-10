@@ -1,0 +1,70 @@
+name: Patch Medieval Counterattack
+
+on:
+  push:
+    branches: ["master"]
+    paths: [".github/workflows/patch-soldiers.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out published game
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          fetch-depth: 0
+
+      - name: Strengthen and expose soldier counterattacks
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path("index.html")
+          text = path.read_text(encoding="utf-8")
+
+          replacements = {
+            'u.userData={t,h:t?12:2,cd:Math.random()*.45,a:0,hit:0,phase:Math.random()*6.28,alive:true,fall:0};':
+            'u.userData={t,h:t?30:2,cd:t?.05+Math.random()*.15:Math.random()*.45,a:0,hit:0,phase:Math.random()*6.28,alive:true,fall:0};',
+
+            'function die(u){u.userData.alive=false;u.userData.fall=.5;u.userData.t?ka--:ma--;ring(u.position,u.userData.t?0xff6868:0x62eff7);spark(u.position.clone().add(new THREE.Vector3(0,2.3,0)),u.userData.t?0xff6868:0x62eff7,13);hud()}':
+            'function die(u){u.userData.alive=false;u.userData.fall=.5;u.userData.t?ka--:ma--;ring(u.position,u.userData.t?0xff6868:0x62eff7);spark(u.position.clone().add(new THREE.Vector3(0,2.3,0)),u.userData.t?0xff6868:0x62eff7,13);hud();if(!u.userData.t&&run)S.textContent="Medieval counterattack — "+(50-ma)+" Michael Jacksons defeated"}',
+
+            'function attack(u,t){u.userData.a=.3;if(u.userData.t){u.userData.cd=.58+Math.random()*.35;for(const v of victims(t.position,A,2.15,3))if(Math.random()<.82)hurt(v,1.05+Math.random()*.5,u);ring(u.position,0xffb24a)}else{u.userData.cd=.42+Math.random()*.32;if(Math.random()<.76)hurt(t,.68+Math.random()*.35,u),ring(t.position,0x62eff7)}}':
+            'function attack(u,t){u.userData.a=.3;if(u.userData.t){u.userData.cd=.42+Math.random()*.24;const dir=t.position.clone().sub(u.position).setY(0);if(dir.lengthSq())u.position.addScaledVector(dir.normalize(),.65);let vs=victims(u.position,A,4.2,4);if(!vs.includes(t))vs.unshift(t);vs=vs.slice(0,4);vs.forEach((v,i)=>{if(i===0||Math.random()<.8)hurt(v,2.25+Math.random()*.45,u)});ring(u.position,0xffb24a);spark(u.position.clone().add(new THREE.Vector3(0,2.5,0)),0xffb24a,10)}else{u.userData.cd=.48+Math.random()*.34;if(Math.random()<.72)hurt(t,.35+Math.random()*.2,u),ring(t.position,0x62eff7)}}',
+
+            'if(d>1.85)u.position.addScaledVector(t.position.clone().sub(u.position).setY(0).normalize(),dt*(d>7?6:4.4));else if(u.userData.cd<=0)attack(u,t)':
+            'if(d>4.2)u.position.addScaledVector(t.position.clone().sub(u.position).setY(0).normalize(),dt*(d>7?7.2:5.4));else if(u.userData.cd<=0)attack(u,t)',
+
+            '<small>Close combat: kicks, punches, shields and sword cleaves.</small>':
+            '<small>Medieval soldiers charge, lunge and perform lethal sword cleaves.</small>',
+
+            'B.onclick=()=>{B.hidden=true;run=true;S.textContent="Battle running — full-contact melee!"}':
+            'B.onclick=()=>{B.hidden=true;run=true;S.textContent="Battle running — soldiers charging and counterattacking!"}',
+
+            'S.textContent=pause?"Battle paused":"Battle running — full-contact melee!"':
+            'S.textContent=pause?"Battle paused":"Battle running — soldiers charging and counterattacking!"'
+          }
+
+          changed = False
+          for old, new in replacements.items():
+              if old in text:
+                  text = text.replace(old, new)
+                  changed = True
+
+          if not changed:
+              raise SystemExit("Expected combat code was not found; no patch applied")
+
+          path.write_text(text, encoding="utf-8")
+
+      - name: Publish patched game
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Make medieval soldiers fight back visibly"
+          git push origin gh-pages
