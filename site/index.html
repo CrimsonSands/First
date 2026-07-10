@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#07111f">
+<title>50 Michael Jacksons VS 10 Medieval Soldiers</title>
+<style>
+:root{--glass:rgba(5,9,20,.82);--mj:#67e8f0;--kn:#ff6b6b;--gold:#ffd166}
+*{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#07111f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+canvas{position:fixed;inset:0;display:block;touch-action:none}
+#ui{position:fixed;inset:0;z-index:5;pointer-events:none}
+#title{position:absolute;top:max(10px,env(safe-area-inset-top));left:10px;right:10px;text-align:center;font-size:clamp(18px,4.8vw,34px);font-weight:950;line-height:1.05;text-shadow:0 4px 18px #000}
+#title small{display:block;margin-top:5px;font-size:12px;opacity:.8}
+#status{position:absolute;top:max(82px,calc(env(safe-area-inset-top) + 68px));left:50%;transform:translateX(-50%);padding:7px 12px;border-radius:999px;background:var(--glass);border:1px solid rgba(255,255,255,.15);font-size:12px;font-weight:850;white-space:nowrap}
+#start{pointer-events:auto;position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);border:0;border-radius:16px;padding:18px 26px;background:linear-gradient(#ffe17b,#f2bd2e);color:#171005;font-size:20px;font-weight:1000;box-shadow:0 14px 50px #000;touch-action:manipulation}
+#controls{pointer-events:auto;position:absolute;right:10px;top:max(118px,calc(env(safe-area-inset-top) + 104px));display:flex;gap:7px}
+#controls button{border:1px solid rgba(255,255,255,.16);border-radius:10px;padding:9px 11px;background:var(--glass);color:#fff;font-weight:900}
+#scores{position:absolute;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.card{padding:10px 12px;border-radius:15px;background:var(--glass);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(9px);min-width:0}
+.card.right{text-align:right}.label{font-size:10px;font-weight:950;letter-spacing:.08em;opacity:.78;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.count{font-size:clamp(25px,7vw,44px);font-weight:1000;line-height:1.05}.mj .count{color:var(--mj)}.kn .count{color:var(--kn)}
+.bar{height:8px;margin-top:7px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden}.fill{height:100%;transition:width .18s linear}.mj .fill{background:linear-gradient(90deg,#27bfd0,#8ff8ff)}.kn .fill{background:linear-gradient(90deg,#ffabab,#ff4747);margin-left:auto}
+#winner{display:none;position:absolute;left:12px;right:12px;top:40%;transform:translateY(-50%);text-align:center;font-size:clamp(30px,8vw,62px);font-weight:1000;text-shadow:0 6px 30px #000}
+#error{display:none;position:absolute;left:20px;right:20px;top:44%;transform:translateY(-50%);padding:18px;border-radius:15px;background:rgba(45,5,10,.94);border:1px solid rgba(255,255,255,.16);text-align:center;font-weight:850;line-height:1.45}
+@media(max-height:620px){#title{font-size:18px}#title small{display:none}#status{top:53px}#controls{top:87px}.count{font-size:24px}}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="ui">
+  <div id="title">50 Michael Jacksons VS 10 Medieval Soldiers! ⚔️<small>Who will win? Tap Start Battle.</small></div>
+  <div id="status">Loading 3D battlefield…</div>
+  <button id="start" hidden>START BATTLE</button>
+  <div id="controls"><button id="pause">Pause</button><button id="restart">Restart</button></div>
+  <div id="winner"></div><div id="error"></div>
+  <div id="scores">
+    <div class="card mj"><div class="label">MICHAEL JACKSON ARMY</div><div class="count" id="mjCount">50</div><div class="bar"><div class="fill" id="mjBar" style="width:100%"></div></div></div>
+    <div class="card kn right"><div class="label">MEDIEVAL ARMY</div><div class="count" id="knCount">10</div><div class="bar"><div class="fill" id="knBar" style="width:100%"></div></div></div>
+  </div>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const $=id=>document.getElementById(id);
+const statusEl=$('status'),startBtn=$('start'),pauseBtn=$('pause'),restartBtn=$('restart'),winnerEl=$('winner'),errorEl=$('error'),mjCountEl=$('mjCount'),knCountEl=$('knCount'),mjBar=$('mjBar'),knBar=$('knBar');
+
+try{
+  const scene=new THREE.Scene();
+  scene.background=new THREE.Color(0x07111f);
+  scene.fog=new THREE.FogExp2(0x07111f,.009);
+  const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,400);
+  camera.position.set(0,38,62);
+  const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
+  renderer.setSize(innerWidth,innerHeight);
+  renderer.shadowMap.enabled=true;
+  renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  renderer.outputColorSpace=THREE.SRGBColorSpace;
+  document.body.prepend(renderer.domElement);
+  const controls=new OrbitControls(camera,renderer.domElement);
+  controls.enableDamping=true;controls.target.set(0,4,0);controls.minDistance=25;controls.maxDistance=110;controls.maxPolarAngle=Math.PI*.48;
+  scene.add(new THREE.HemisphereLight(0xbfe7ff,0x25331b,2.3));
+  const sun=new THREE.DirectionalLight(0xffefd1,3.2);sun.position.set(-30,58,28);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=-55;sun.shadow.camera.right=55;sun.shadow.camera.top=55;sun.shadow.camera.bottom=-55;scene.add(sun);
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(150,105),new THREE.MeshStandardMaterial({color:0x3d5b2d,roughness:1}));
+  ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+  const line=new THREE.Mesh(new THREE.PlaneGeometry(.7,95),new THREE.MeshBasicMaterial({color:0xf2cf5b,transparent:true,opacity:.4}));line.rotation.x=-Math.PI/2;line.position.y=.025;scene.add(line);
+  const mats={black:new THREE.MeshStandardMaterial({color:0x111216,roughness:.55,metalness:.08}),white:new THREE.MeshStandardMaterial({color:0xf1f3f5,roughness:.42,metalness:.12}),silver:new THREE.MeshStandardMaterial({color:0xb3bcc4,roughness:.25,metalness:.8}),red:new THREE.MeshStandardMaterial({color:0x9e2530,roughness:.58,metalness:.12}),skin:new THREE.MeshStandardMaterial({color:0xd5a079,roughness:.72}),gold:new THREE.MeshStandardMaterial({color:0xe7b83f,roughness:.28,metalness:.68}),cyan:new THREE.MeshStandardMaterial({color:0x53e7ef,emissive:0x0d6268,emissiveIntensity:1.05,roughness:.3})};
+  const shadow=m=>{m.castShadow=true;m.receiveShadow=true;return m};
+  function makeMJ(){const g=new THREE.Group();const torso=shadow(new THREE.Mesh(new THREE.BoxGeometry(1.15,1.95,.66),mats.white));torso.position.y=2.55;g.add(torso);const stripe=new THREE.Mesh(new THREE.BoxGeometry(.13,1.76,.69),mats.silver);stripe.position.set(.36,2.58,0);g.add(stripe);const belt=new THREE.Mesh(new THREE.BoxGeometry(1.2,.15,.71),mats.black);belt.position.y=1.68;g.add(belt);const head=shadow(new THREE.Mesh(new THREE.SphereGeometry(.44,16,12),mats.skin));head.position.y=4;g.add(head);const hair=new THREE.Mesh(new THREE.SphereGeometry(.48,14,10,0,Math.PI*2,0,Math.PI*.58),mats.black);hair.position.set(0,4.2,-.05);g.add(hair);const hat=new THREE.Mesh(new THREE.CylinderGeometry(.46,.56,.28,18),mats.black);hat.position.y=4.61;g.add(hat);const brim=new THREE.Mesh(new THREE.CylinderGeometry(.74,.74,.07,20),mats.black);brim.position.y=4.48;g.add(brim);for(const side of [-1,1]){const arm=shadow(new THREE.Mesh(new THREE.CylinderGeometry(.12,.15,1.65,9),mats.black));arm.position.set(side*.69,2.5,0);arm.rotation.z=side*-.14;arm.name=side<0?'armL':'armR';g.add(arm);const leg=shadow(new THREE.Mesh(new THREE.CylinderGeometry(.14,.18,1.85,9),mats.black));leg.position.set(side*.22,.86,0);leg.name=side<0?'legL':'legR';g.add(leg);const shoe=shadow(new THREE.Mesh(new THREE.BoxGeometry(.34,.18,.62),mats.white));shoe.position.set(side*.22,.05,.15);g.add(shoe)}g.scale.setScalar(.84);return g}
+  function makeKnight(){const g=new THREE.Group();const torso=shadow(new THREE.Mesh(new THREE.BoxGeometry(1.28,2.05,.76),mats.red));torso.position.y=2.55;g.add(torso);const plate=shadow(new THREE.Mesh(new THREE.BoxGeometry(.98,1.54,.81),mats.silver));plate.position.y=2.68;g.add(plate);const helmet=shadow(new THREE.Mesh(new THREE.CylinderGeometry(.5,.56,.8,12),mats.silver));helmet.position.y=4.04;g.add(helmet);const slit=new THREE.Mesh(new THREE.BoxGeometry(.7,.1,.58),mats.black);slit.position.set(0,4.07,-.25);g.add(slit);const plume=new THREE.Mesh(new THREE.BoxGeometry(.11,.62,.36),mats.red);plume.position.y=4.74;g.add(plume);const shield=shadow(new THREE.Mesh(new THREE.CylinderGeometry(.6,.6,.13,8),mats.gold));shield.rotation.z=Math.PI/2;shield.position.set(-.84,2.56,.02);g.add(shield);const sword=shadow(new THREE.Mesh(new THREE.BoxGeometry(.1,2.05,.1),mats.silver));sword.position.set(.91,2.9,0);sword.rotation.z=-.34;sword.name='sword';g.add(sword);for(const side of [-1,1]){const leg=shadow(new THREE.Mesh(new THREE.CylinderGeometry(.16,.2,1.82,9),mats.black));leg.position.set(side*.23,.85,0);leg.name=side<0?'legL':'legR';g.add(leg)}g.scale.setScalar(.9);return g}
+  const mjUnits=[],knUnits=[],bolts=[],particles=[];const mjGroup=new THREE.Group(),knGroup=new THREE.Group();scene.add(mjGroup,knGroup);let running=false,paused=false,finished=false,sim=0,mjAlive=50,knAlive=10;
+  function spawn(){mjGroup.clear();knGroup.clear();mjUnits.length=0;knUnits.length=0;for(let i=0;i<50;i++){const u=makeMJ(),col=i%10,row=Math.floor(i/10);u.position.set(-14-row*1.72,0,(col-4.5)*2.45);u.rotation.y=Math.PI/2;u.userData={alive:true,cooldown:.2+Math.random(),phase:Math.random()*6.28};mjGroup.add(u);mjUnits.push(u)}for(let i=0;i<10;i++){const u=makeKnight(),col=i%5,row=Math.floor(i/5);u.position.set(14+row*2.1,0,(col-2)*3.5);u.rotation.y=-Math.PI/2;u.userData={alive:true,cooldown:.4+Math.random(),phase:Math.random()*6.28};knGroup.add(u);knUnits.push(u)}}
+  function nearest(u,list){let best=null,d=Infinity;for(const v of list){if(!v.userData.alive)continue;const q=u.position.distanceToSquared(v.position);if(q<d){d=q;best=v}}return[best,Math.sqrt(d)]}
+  function burst(pos,color){for(let i=0;i<8;i++){const p=new THREE.Mesh(new THREE.SphereGeometry(.09,6,5),new THREE.MeshBasicMaterial({color}));p.position.copy(pos);p.userData={life:.55,vel:new THREE.Vector3((Math.random()-.5)*5,Math.random()*4+1,(Math.random()-.5)*5)};scene.add(p);particles.push(p)}}
+  function kill(u,team){if(!u||!u.userData.alive)return;u.userData.alive=false;u.visible=false;burst(u.position.clone().add(new THREE.Vector3(0,2.3,0)),team==='mj'?0x62eff7:0xff6969);if(team==='mj')mjAlive--;else knAlive--;updateHUD()}
+  function fire(a,t){const b=new THREE.Mesh(new THREE.SphereGeometry(.16,8,6),mats.cyan);b.position.copy(a.position).add(new THREE.Vector3(0,2.5,0));b.userData={target:t,speed:20};scene.add(b);bolts.push(b)}
+  function updateUnits(dt){const ma=mjUnits.filter(u=>u.userData.alive),ka=knUnits.filter(u=>u.userData.alive);for(const u of ma){u.userData.cooldown-=dt;u.position.y=Math.sin(sim*7+u.userData.phase)*.09;const[t,d]=nearest(u,ka);if(!t)continue;if(d>7){u.position.addScaledVector(t.position.clone().sub(u.position).normalize(),dt*4.8)}else if(u.userData.cooldown<=0){fire(u,t);u.userData.cooldown=.65+Math.random()*.85}}for(const u of ka){u.userData.cooldown-=dt;u.position.y=Math.abs(Math.sin(sim*6+u.userData.phase))*.07;const[t,d]=nearest(u,ma);if(!t)continue;if(d>2){u.position.addScaledVector(t.position.clone().sub(u.position).normalize(),dt*3.5)}else if(u.userData.cooldown<=0){const sword=u.getObjectByName('sword');if(sword)sword.rotation.z=-.8;if(Math.random()<.34)kill(t,'mj');u.userData.cooldown=.9+Math.random()*.8}}}
+  function updateBolts(dt){for(let i=bolts.length-1;i>=0;i--){const b=bolts[i],t=b.userData.target;if(!t||!t.userData.alive){scene.remove(b);bolts.splice(i,1);continue}const dest=t.position.clone().add(new THREE.Vector3(0,2.4,0)),v=dest.sub(b.position),d=v.length();if(d<.5){if(Math.random()<.48)kill(t,'kn');scene.remove(b);bolts.splice(i,1)}else b.position.addScaledVector(v.normalize(),dt*b.userData.speed)}}
+  function updateParticles(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.userData.life-=dt;p.userData.vel.y-=dt*10;p.position.addScaledVector(p.userData.vel,dt);p.scale.setScalar(Math.max(.01,p.userData.life));if(p.userData.life<=0){scene.remove(p);particles.splice(i,1)}}}
+  function updateHUD(){mjCountEl.textContent=mjAlive;knCountEl.textContent=knAlive;mjBar.style.width=(mjAlive/50*100)+'%';knBar.style.width=(knAlive/10*100)+'%'}
+  function checkWinner(){if(finished)return;if(knAlive<=0){finish('🕺 MICHAEL JACKSON ARMY WINS!')}else if(mjAlive<=0){finish('⚔️ MEDIEVAL ARMY WINS!')}}
+  function finish(text){finished=true;running=false;winnerEl.textContent=text;winnerEl.style.display='block';statusEl.textContent='Battle complete'}
+  function reset(){for(const x of [...bolts,...particles])scene.remove(x);bolts.length=0;particles.length=0;mjAlive=50;knAlive=10;sim=0;running=false;paused=false;finished=false;winnerEl.style.display='none';pauseBtn.textContent='Pause';spawn();updateHUD();statusEl.textContent='Ready — tap Start Battle';startBtn.hidden=false}
+  startBtn.addEventListener('click',()=>{startBtn.hidden=true;running=true;paused=false;statusEl.textContent='Battle running — armies advancing';clock.getDelta()});
+  pauseBtn.addEventListener('click',()=>{if(finished)return;paused=!paused;pauseBtn.textContent=paused?'Resume':'Pause';statusEl.textContent=paused?'Battle paused':'Battle running'});
+  restartBtn.addEventListener('click',reset);
+  addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+  const clock=new THREE.Clock();
+  function frame(){requestAnimationFrame(frame);const dt=Math.min(clock.getDelta(),.04);if(running&&!paused&&!finished){sim+=dt;updateUnits(dt);updateBolts(dt);updateParticles(dt);checkWinner()}controls.update();renderer.render(scene,camera)}
+  reset();statusEl.textContent='Ready — tap Start Battle';requestAnimationFrame(frame);
+}catch(err){statusEl.style.display='none';startBtn.hidden=true;errorEl.style.display='block';errorEl.textContent='The 3D engine could not load. Reload this page in Safari. Details: '+err.message;console.error(err)}
+</script>
+</body>
+</html>
