@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Battle Simulator</title>
+<style>
+html,body,#game{width:100%;height:100%;margin:0;border:0;display:block;overflow:hidden;background:#07111f}
+</style>
+</head>
+<body>
+<iframe id="game" src="app.html?v=2184d19e" title="Michael Jacksons versus medieval soldiers battle"></iframe>
+<script>
+const frame = document.getElementById('game');
+frame.addEventListener('load', () => {
+  try {
+    const doc = frame.contentDocument;
+    const michaelInput = doc.getElementById('mi');
+    const soldierInput = doc.getElementById('ki');
+    const michaelTeamPower = doc.getElementById('mtp');
+    const soldierTeamPower = doc.getElementById('ktp');
+    const soldierPowerLabel = doc.getElementById('kp');
+    if (!michaelInput || !soldierInput || !michaelTeamPower || !soldierTeamPower) return;
+
+    const powerMatch = soldierPowerLabel?.textContent.match(/[0-9]+(?:\.[0-9]+)?/);
+    const soldierUnitPower = powerMatch ? Number(powerMatch[0]) : 2.6;
+
+    const readDraft = (input) => {
+      const raw = input.value.trim();
+      if (raw === '') return 0;
+      const value = Number(raw);
+      if (!Number.isFinite(value)) return 0;
+      return Math.max(0, Math.min(199, Math.round(value)));
+    };
+
+    const updatePreview = () => {
+      michaelTeamPower.textContent = 'Team: ' + readDraft(michaelInput).toFixed(1);
+      soldierTeamPower.textContent = 'Team: ' + (readDraft(soldierInput) * soldierUnitPower).toFixed(1);
+    };
+
+    michaelInput.oninput = updatePreview;
+    soldierInput.oninput = updatePreview;
+    updatePreview();
+  } catch (error) {
+    console.error('Could not install input fix', error);
+  }
+});
+</script>
+</body>
+</html>
